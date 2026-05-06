@@ -7,7 +7,7 @@ import json, os, uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
-DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
+DATA_FILE = os.getenv("DATA_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json"))
 BRANDS    = ["BOM", "CBI", "BB", "RBL"]
 
 # ── Default seed data (pre-loaded providers & buyers) ─────────────────────────

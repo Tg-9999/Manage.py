@@ -47,7 +47,7 @@ db = DataManager()
 
     # View
     VL_FILTER,
-) = range(25)
+) = range(24)
 
 BRANDS = ["BOM", "CBI", "BB", "RBL"]
 

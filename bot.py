@@ -141,19 +141,24 @@ async def main_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def _show_provider_select(q):
-    providers = db.get_all_providers()
-    rows = [
-        [(f"🏭 {p['name'].upper()}", f"akp_{p['id']}")]
-        for p in providers
-    ]
-    rows.append([("➕ NEW PROVIDER", "akp_new")])
-    rows.append([("❌ CANCEL", "main")])
-    await q.edit_message_text(
-        "🏭 *ADD KIT — SELECT PROVIDER:*",
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
-    )
-    return AK_PROV_SELECT
+    try:
+        providers = db.get_all_providers()
+        rows = [
+            [(f"🏭 {p['name'].upper()}", f"akp_{p['id']}")]
+            for p in providers
+        ]
+        rows.append([("➕ NEW PROVIDER", "akp_new")])
+        rows.append([("❌ CANCEL", "main")])
+        await q.edit_message_text(
+            "🏭 *ADD KIT — SELECT PROVIDER:*",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(rows)
+        )
+        return AK_PROV_SELECT
+    except Exception as e:
+        logger.error(f"Provider select error: {e}")
+        await q.edit_message_text(f"❌ ERROR: {str(e)}", reply_markup=back_kb())
+        return MAIN_MENU
 
 async def ak_prov_selected(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query

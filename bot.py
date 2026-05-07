@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Kit Accounts Manager v4
+Kit Accounts Manager v4 — FIXED
 - Full English UI
 - Saved providers: LR / AK / KN + NEW PROVIDER
 - Saved buyers: KP + NEW BUYER
@@ -52,10 +52,21 @@ BRANDS = ["BOM", "CBI", "BB", "RBL"]
 # ══════════════════════════════════════════════════════════════════════════════
 
 def kb(*rows):
+    """Build InlineKeyboardMarkup from rows of (text, callback_data) tuples."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(t, callback_data=d) for t, d in row]
         for row in rows
     ])
+
+def list_kb(items: list, cancel: bool = True) -> InlineKeyboardMarkup:
+    """
+    Build a single-button-per-row keyboard from a list of (label, callback_data).
+    Optionally appends a CANCEL button. Fixes the mixed-tuple/Button bug.
+    """
+    rows = [[InlineKeyboardButton(t, callback_data=d)] for t, d in items]
+    if cancel:
+        rows.append([InlineKeyboardButton("❌ CANCEL", callback_data="main")])
+    return InlineKeyboardMarkup(rows)
 
 def cancel_kb():
     return kb([("❌ CANCEL", "main")])
@@ -143,16 +154,12 @@ async def main_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def _show_provider_select(q):
     try:
         providers = db.get_all_providers()
-        rows = [
-            [(f"🏭 {p['name'].upper()}", f"akp_{p['id']}")]
-            for p in providers
-        ]
-        rows.append([("➕ NEW PROVIDER", "akp_new")])
-        rows.append([("❌ CANCEL", "main")])
+        items = [(f"🏭 {p['name'].upper()}", f"akp_{p['id']}") for p in providers]
+        items.append(("➕ NEW PROVIDER", "akp_new"))
         await q.edit_message_text(
             "🏭 *ADD KIT — SELECT PROVIDER:*",
             parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(rows)
+            reply_markup=list_kb(items)
         )
         return AK_PROV_SELECT
     except Exception as e:
@@ -186,22 +193,20 @@ async def ak_prov_name_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     prov = db.add_new_provider(name)
     ctx.user_data["ak_prov_id"]   = prov["id"]
     ctx.user_data["ak_prov_name"] = prov["name"]
-    rows = [[InlineKeyboardButton(b, callback_data=f"akb_{b}")] for b in BRANDS]
-    rows.append([InlineKeyboardButton("❌ CANCEL", callback_data="main")])
+    items = [(b, f"akb_{b}") for b in BRANDS]
     await update.message.reply_text(
         f"✅ *PROVIDER '{name.upper()}' SAVED!*\n\n🏷️ *SELECT BRAND:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
+        reply_markup=list_kb(items)
     )
     return AK_BRAND
 
 async def _show_brand_select(q):
-    rows = [[InlineKeyboardButton(b, callback_data=f"akb_{b}")] for b in BRANDS]
-    rows.append([InlineKeyboardButton("❌ CANCEL", callback_data="main")])
+    items = [(b, f"akb_{b}") for b in BRANDS]
     await q.edit_message_text(
         "🏷️ *SELECT BRAND:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
+        reply_markup=list_kb(items)
     )
     return AK_BRAND
 
@@ -362,16 +367,15 @@ async def _show_kit_select(q):
             parse_mode="Markdown", reply_markup=back_kb()
         )
         return MAIN_MENU
-    rows = [
-        [(f"#{k['kit_no']} | {k['brand']} | {k['holder_name'].upper()} | ...{k['account_no'][-4:]}",
-          f"sk_{k['kit_no']}")]
+    items = [
+        (f"#{k['kit_no']} | {k['brand']} | {k['holder_name'].upper()} | ...{k['account_no'][-4:]}",
+         f"sk_{k['kit_no']}")
         for k in unsold
     ]
-    rows.append([("❌ CANCEL", "main")])
     await q.edit_message_text(
         "🛒 *SELL KIT — SELECT KIT:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
+        reply_markup=list_kb(items)
     )
     return SK_KIT
 
@@ -387,10 +391,8 @@ async def sk_kit(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["sk_kit"]    = kit
 
     buyers = db.get_all_buyers()
-    rows   = [(f"👤 {b['name'].upper()}", f"skb_{b['id']}") for b in buyers]
-    buyer_rows = [[InlineKeyboardButton(t, callback_data=d)] for t, d in rows]
-    buyer_rows.append([InlineKeyboardButton("➕ NEW BUYER", callback_data="skb_new")])
-    buyer_rows.append([InlineKeyboardButton("❌ CANCEL",    callback_data="main")])
+    items  = [(f"👤 {b['name'].upper()}", f"skb_{b['id']}") for b in buyers]
+    items.append(("➕ NEW BUYER", "skb_new"))
 
     await q.edit_message_text(
         f"🛒 KIT *#{kit_no}* — {kit['brand']}\n"
@@ -398,7 +400,7 @@ async def sk_kit(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"ACC: `{kit['account_no']}`\n\n"
         f"👤 *SELECT BUYER:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(buyer_rows)
+        reply_markup=list_kb(items)
     )
     return SK_BUYER_SELECT
 
@@ -535,16 +537,15 @@ async def _show_ubp(q):
             parse_mode="Markdown", reply_markup=back_kb()
         )
         return MAIN_MENU
-    rows = [
-        [(f"#{k['kit_no']} | {k['buyer_name'].upper()} | DUE: {fmt(k['sell_price'] - k['buyer_paid'])}",
-          f"ubp_{k['kit_no']}")]
+    items = [
+        (f"#{k['kit_no']} | {k['buyer_name'].upper()} | DUE: {fmt(k['sell_price'] - k['buyer_paid'])}",
+         f"ubp_{k['kit_no']}")
         for k in kits
     ]
-    rows.append([("❌ CANCEL", "main")])
     await q.edit_message_text(
         "💰 *UPDATE BUYER PAYMENT — SELECT KIT:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
+        reply_markup=list_kb(items)
     )
     return UBP_KIT
 
@@ -599,15 +600,14 @@ async def _show_pp(q):
             parse_mode="Markdown", reply_markup=back_kb()
         )
         return MAIN_MENU
-    rows = [
-        [(f"🏭 {p['name'].upper()} | PENDING: {fmt(p['outstanding'])}", f"pp_{p['id']}")]
+    items = [
+        (f"🏭 {p['name'].upper()} | PENDING: {fmt(p['outstanding'])}", f"pp_{p['id']}")
         for p in provs
     ]
-    rows.append([("❌ CANCEL", "main")])
     await q.edit_message_text(
         "💸 *PAY TO PROVIDER — SELECT PROVIDER:*",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(rows)
+        reply_markup=list_kb(items)
     )
     return PP_PROV
 
